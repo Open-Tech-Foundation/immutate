@@ -2,7 +2,9 @@
 
 # @opentf/immutate
 
-<span>*Part of the <img src="https://open-tech-foundation.pages.dev/img/Logo.svg" width="18" height="18" style="vertical-align: middle;" /> [Open Tech Foundation](https://github.com/Open-Tech-Foundation) ecosystem.*</span>
+*Part of the 
+<img src="https://open-tech-foundation.pages.dev/img/Logo.svg" width="18" height="18" align="center" />
+<a href="https://github.com/Open-Tech-Foundation">Open Tech Foundation</a> ecosystem.*
 
 </div>
 
@@ -154,7 +156,7 @@ bun run benchmark
 | Structural sharing | ✅ | ✅ | ✅ | ✅ | ✅ |
 | No-change referential equality | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Async recipe support | ✅ | ⚠️¹ | ❌ | ✅ | ❌ |
-| Return value from recipe | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Return value from recipe | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **Patches** | | | | | |
 | Patch generation | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Inverse patches (undo) | ❌ | ✅ | ✅ | ✅ | ❌ |
@@ -175,7 +177,7 @@ bun run benchmark
 | Current snapshot in recipe | ❌ | ✅ | ✅ | ❌ | ❌ |
 | Custom shallow copy / plugins | ❌ | ❌ | ✅ | ❌ | ❌ |
 | TypeScript generics | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Zero runtime dependencies | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Zero runtime dependencies | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 <sup>¹ Immer discourages async inside `produce`; requires `createDraft`/`finishDraft` workaround.</sup>
 <sup>² Structura supports standard patches via `enableStandardPatches(true)`.</sup>
