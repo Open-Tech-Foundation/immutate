@@ -1,12 +1,21 @@
-# @opentf/immutate 🧊
+<div align="center">
 
-> A lightweight, high-performance immutability library for JavaScript objects.
+# @opentf/immutate
+
+<span>*Part of the <img src="https://open-tech-foundation.pages.dev/img/Logo.svg" width="18" height="18" style="vertical-align: middle;" /> [Open Tech Foundation](https://github.com/Open-Tech-Foundation) ecosystem.*</span>
+
+</div>
+
+> 🚀 A lightweight, high-performance immutability library for JavaScript objects.
 
 ## ✨ Features
 
-- **Simple API**: Work with mutable-like syntax while producing immutable data.
+- **Blazing Fast**: Fastest in class — wins all benchmarks against immer, mutative, structura, and craft.
+- **Zero Dependencies**: No runtime dependencies. Pure structural-sharing engine.
+- **Simple API**: Write mutable-like syntax, get immutable results.
+- **Structural Sharing**: Only copies the changed spine — unchanged branches are reused by reference.
 - **TypeScript Support**: Full type safety for your state and recipes.
-- **Fast**: Optimized for performance using Proxy-based tracking.
+- **Async Support**: `immutateAsync` for async recipes.
 
 ## 🚀 Installation
 
@@ -55,6 +64,63 @@ const updatedUsers = immutate(users, (draft) => {
   draft[1].active = true;
   draft.push({ id: 3, name: 'Charlie', active: true });
 });
+```
+
+### Async Recipe
+
+```javascript
+const nextState = await immutateAsync(state, async (draft) => {
+  const data = await fetchData();
+  draft.items = data;
+});
+```
+
+## ⚡ Benchmarks
+
+Compared against popular immutability libraries. Lower avg time is better.
+
+> **Environment**: Bun v1.3.12 — 5,000 iterations per test.
+
+### Deep Nested Object
+
+Mutating a single leaf 9 levels deep: `draft.a.b.c.d.e.f.g.h.i += 1`
+
+| Library | Avg Time (ms) | Perf Score |
+|---|---:|---:|
+| **@opentf/immutate** 🥇 | **0.00516** | **2.3x** |
+| craft | 0.00786 | 1.5x |
+| structura | 0.00881 | 1.4x |
+| immer | 0.01104 | 1.1x |
+| mutative | 0.01192 | 1.0x |
+
+### Array Push (100 items)
+
+Pushing 100 elements to an array: `draft.list.push(i)`
+
+| Library | Avg Time (ms) | Perf Score |
+|---|---:|---:|
+| **@opentf/immutate** 🥇 | **0.06300** | **15.8x** |
+| mutative | 0.14258 | 7.0x |
+| immer | 0.52985 | 1.9x |
+| craft | 0.57075 | 1.7x |
+| structura | 0.99640 | 1.0x |
+
+### Wide Object (200 keys)
+
+Mutating 200 properties on a flat object: `draft["key" + i] = i * 2`
+
+| Library | Avg Time (ms) | Perf Score |
+|---|---:|---:|
+| **@opentf/immutate** 🥇 | **0.04751** | **4.9x** |
+| structura | 0.11950 | 1.9x |
+| mutative | 0.17814 | 1.3x |
+| immer | 0.20472 | 1.1x |
+| craft | 0.23073 | 1.0x |
+
+Run benchmarks locally:
+
+```bash
+bun run benchmark
 ```
 
 ## ⚖️ License

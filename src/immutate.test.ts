@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { immutate } from "../index";
+import { immutate } from "./index";
 
 describe("immutate", () => {
   it("should update nested object properties", () => {

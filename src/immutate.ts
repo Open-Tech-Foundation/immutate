@@ -1,139 +1,118 @@
-const { patch } = require("@opentf/obj-diff");
+const isObject = (v: any): v is object =>
+  typeof v === "object" && v !== null;
 
-const IS_DEV = process.env.NODE_ENV !== "production";
+const shallowClone = (obj: any) =>
+  Array.isArray(obj) ? obj.slice() : { ...obj };
 
-const isObject = (v) => typeof v === "object" && v !== null;
-const shallowClone = (obj) => (Array.isArray(obj) ? obj.slice() : { ...obj });
+type DraftNode = {
+  children?: Map<string | number, DraftNode>;
+  proxy?: any;
+  target?: any;
+};
 
-// Reconstruct path array only when recording a patch (write-time, not read-time)
-function buildPath(node) {
-  const parts = [];
-  while (node.parent !== null) {
-    parts.push(node.key);
-    node = node.parent;
+function getChild(parent: DraftNode, key: string | number): DraftNode {
+  if (!parent.children) parent.children = new Map();
+  let child = parent.children.get(key);
+  if (!child) {
+    child = {};
+    parent.children.set(key, child);
   }
-  return parts.reverse();
+  return child;
 }
 
-function createDraft(target, pathNode, copies, patchMap) {
-  // ── Symbol fast-path: skip proxy machinery for internal JS symbols ──
-  // Symbols are used by util.inspect, React DevTools, iterators, etc.
-  // Wrapping them wastes cycles and can break invariants.
+function createDraft(
+  target: any,
+  node: DraftNode,
+  copies: WeakMap<any, any>
+): any {
+  if (node.proxy && node.target === target) return node.proxy;
 
-  const { proxy, revoke } = Proxy.revocable(target, {
+  // P1: plain Proxy instead of Proxy.revocable
+  const proxy = new Proxy(target, {
     get(obj, prop) {
-      if (typeof prop === "symbol") return Reflect.get(obj, prop);
-
+      if (typeof prop === "symbol") return obj[prop];
       const source = copies.get(obj) ?? obj;
-      const value = Reflect.get(source, prop);
-      const key =
-        typeof prop === "string" && !isNaN(prop) ? Number(prop) : prop;
-
+      const value = source[prop];
       if (!isObject(value)) return value;
-
-      // ── No proxy cache: same object at two paths needs two distinct proxies
-      // with correct path context. Proxies are thin wrappers — creation is cheap.
-      return createDraft(value, { parent: pathNode, key }, copies, patchMap)
-        .proxy;
+      return createDraft(
+        value,
+        getChild(node, prop as string | number),
+        copies
+      );
     },
 
     set(obj, prop, value) {
-      const key =
-        typeof prop === "string" && !isNaN(prop) ? Number(prop) : prop;
-
       if (!copies.has(obj)) copies.set(obj, shallowClone(obj));
-      const copy = copies.get(obj);
-
-      // ── Check copy (not original) to determine add vs update.
-      // The original may be missing a key the copy already has (or vice versa).
-      const type = Object.prototype.hasOwnProperty.call(copy, prop) ? 2 : 1;
-      const pathKey = [...buildPath(pathNode), key].join("\0");
-
-      // ── Patch deduplication: last write to a path wins, O(1) squash ──
-      patchMap.set(pathKey, {
-        type,
-        path: [...buildPath(pathNode), key],
-        value,
-      });
-      return Reflect.set(copy, prop, value);
+      copies.get(obj)![prop] = value;
+      return true;
     },
 
     deleteProperty(obj, prop) {
-      if (!(prop in obj)) return true;
-
+      const source = copies.get(obj) ?? obj;
+      if (!(prop in source)) return true;
       if (!copies.has(obj)) copies.set(obj, shallowClone(obj));
-      const copy = copies.get(obj);
-      const key =
-        typeof prop === "string" && !isNaN(prop) ? Number(prop) : prop;
-      const pathKey = [...buildPath(pathNode), key].join("\0");
+      delete copies.get(obj)![prop];
+      return true;
+    },
 
-      patchMap.set(pathKey, { type: 0, path: [...buildPath(pathNode), key] });
-      return Reflect.deleteProperty(copy, prop);
+    // P5: has trap for correctness after delete
+    has(obj, prop) {
+      const source = copies.get(obj) ?? obj;
+      return prop in source;
     },
   });
 
-  return { proxy, revoke };
+  node.proxy = proxy;
+  node.target = target;
+  return proxy;
 }
 
-// ── Structural sharing: walk only modified nodes instead of replaying patches ──
-// Nodes that were never touched reuse their original reference — no deep clone.
-function finalize(root, copies) {
-  if (!isObject(root)) return root;
-  if (!copies.has(root)) return root; // untouched — reuse original
+// P0: Structural-sharing finalizer — copies only the changed spine,
+// reuses all unchanged subtrees by reference. O(changed) not O(total).
+function finalize(
+  node: DraftNode,
+  original: any,
+  copies: WeakMap<any, any>
+): any {
+  const copy = copies.get(original);
+  let result = copy ?? original;
+  let cloned = !!copy;
 
-  const copy = copies.get(root);
-  for (const key of Object.keys(copy)) {
-    const child = copy[key];
-    if (isObject(child)) {
-      copy[key] = finalize(child, copies);
+  if (node.children) {
+    for (const [key, childNode] of node.children) {
+      // Use effective source: copy may have replaced children
+      const childSource = (copy ?? original)[key];
+      if (isObject(childSource)) {
+        const childResult = finalize(childNode, childSource, copies);
+        if (childResult !== childSource) {
+          if (!cloned) {
+            result = shallowClone(original);
+            cloned = true;
+          }
+          result[key] = childResult;
+        }
+      }
     }
   }
 
-  if (IS_DEV) Object.freeze(copy); // catch mutations to returned state early
-  return copy;
+  return result;
 }
 
-export function immutate(baseState, recipe) {
-  const copies = new WeakMap();
-  const patchMap = new Map(); // pathKey → patch (deduplicates repeated writes)
-
-  const rootPathNode = { parent: null, key: null };
-  const { proxy: draft, revoke } = createDraft(
-    baseState,
-    rootPathNode,
-    copies,
-    patchMap,
-  );
-
+export function immutate(baseState: any, recipe: (draft: any) => void) {
+  const copies = new WeakMap<any, any>();
+  const root: DraftNode = {};
+  const draft = createDraft(baseState, root, copies);
   recipe(draft);
-
-  // ── Revoke draft: any post-recipe access throws immediately ──
-  // Prevents stale-draft bugs in async code that escapes the recipe.
-  revoke();
-
-  if (patchMap.size === 0) return baseState; // nothing changed — return original
-
-  return finalize(baseState, copies);
+  return finalize(root, baseState, copies);
 }
 
-// ── Async variant: awaits the recipe before finalizing ──
-export async function immutateAsync(baseState, recipe) {
-  const copies = new WeakMap();
-  const patchMap = new Map();
-
-  const rootPathNode = { parent: null, key: null };
-  const { proxy: draft, revoke } = createDraft(
-    baseState,
-    rootPathNode,
-    copies,
-    patchMap,
-  );
-
-  await recipe(draft); // wait for all async mutations to settle
-
-  revoke();
-
-  if (patchMap.size === 0) return baseState;
-
-  return finalize(baseState, copies);
+export async function immutateAsync(
+  baseState: any,
+  recipe: (draft: any) => Promise<void>
+) {
+  const copies = new WeakMap<any, any>();
+  const root: DraftNode = {};
+  const draft = createDraft(baseState, root, copies);
+  await recipe(draft);
+  return finalize(root, baseState, copies);
 }
