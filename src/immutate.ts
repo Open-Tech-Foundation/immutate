@@ -299,9 +299,36 @@ function finalizeSet(
   return modified ? new Set(values) : original;
 }
 
+// ── TypeScript Utility Types ──────────────────────────────────────────
+
+/** Deep mutable version of T — used for the draft inside recipes. */
+export type Draft<T> = T extends ReadonlyMap<infer K, infer V>
+  ? Map<Draft<K>, Draft<V>>
+  : T extends ReadonlySet<infer V>
+    ? Set<Draft<V>>
+    : T extends Readonly<infer U>
+      ? U extends object
+        ? { -readonly [P in keyof U]: Draft<U[P]> }
+        : U
+      : T extends object
+        ? { -readonly [P in keyof T]: Draft<T[P]> }
+        : T;
+
+/** Deep readonly version of T — returned from immutate. */
+export type Immutable<T> = T extends Map<infer K, infer V>
+  ? ReadonlyMap<Immutable<K>, Immutable<V>>
+  : T extends Set<infer V>
+    ? ReadonlySet<Immutable<V>>
+    : T extends object
+      ? { readonly [P in keyof T]: Immutable<T[P]> }
+      : T;
+
 // ── Public API ────────────────────────────────────────────────────────
 
-export function immutate(baseState: any, recipe: (draft: any) => void) {
+export function immutate<T>(
+  baseState: T,
+  recipe: (draft: Draft<T>) => void
+): Immutable<T> {
   const copies = new WeakMap<any, any>();
   const root: DraftNode = {};
   const draft = createDraft(baseState, root, copies);
@@ -309,10 +336,10 @@ export function immutate(baseState: any, recipe: (draft: any) => void) {
   return finalize(root, baseState, copies);
 }
 
-export async function immutateAsync(
-  baseState: any,
-  recipe: (draft: any) => Promise<void>
-) {
+export async function immutateAsync<T>(
+  baseState: T,
+  recipe: (draft: Draft<T>) => Promise<void>
+): Promise<Immutable<T>> {
   const copies = new WeakMap<any, any>();
   const root: DraftNode = {};
   const draft = createDraft(baseState, root, copies);

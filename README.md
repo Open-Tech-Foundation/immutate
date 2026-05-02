@@ -15,7 +15,7 @@
 - **Simple API**: Write mutable-like syntax, get immutable results.
 - **Structural Sharing**: Only copies the changed spine — unchanged branches are reused by reference.
 - **Map & Set Support**: Full draft support for `Map` and `Set` — deep modifications, iteration, and structural sharing.
-- **TypeScript Support**: Full type safety for your state and recipes.
+- **TypeScript Support**: Full type safety with `Draft<T>` and `Immutable<T>` (deep readonly).
 - **Async Support**: `immutateAsync` for async recipes.
 
 ## 🚀 Installation
@@ -76,6 +76,27 @@ const nextState = await immutateAsync(state, async (draft) => {
 });
 ```
 
+### TypeScript Support
+
+Immutate provides full type safety out of the box. It uses `Draft<T>` to make the draft mutable inside the recipe, and `Immutable<T>` to make the returned state deep-readonly.
+
+```typescript
+import { immutate, type Immutable } from '@opentf/immutate';
+
+interface State {
+  user: { name: string };
+}
+
+const state: State = { user: { name: 'John' } };
+
+const nextState = immutate(state, (draft) => {
+  draft.user.name = 'Jane'; // ✅ Draft is mutable
+});
+
+// nextState is Immutable<State>
+// nextState.user.name = 'Bob'; // ❌ TS Error: Cannot assign to 'name' because it is a read-only property.
+```
+
 ## ⚡ Benchmarks
 
 Compared against popular immutability libraries. All libraries pass correctness verification before benchmarking. Lower avg time is better.
@@ -123,6 +144,46 @@ Run benchmarks locally:
 ```bash
 bun run benchmark
 ```
+
+## 🔬 Feature Comparison
+
+| Feature | immutate | immer | mutative | structura | craft |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Core** | | | | | |
+| Proxy-based draft | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Structural sharing | ✅ | ✅ | ✅ | ✅ | ✅ |
+| No-change referential equality | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Async recipe support | ✅ | ⚠️¹ | ❌ | ✅ | ❌ |
+| Return value from recipe | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **Patches** | | | | | |
+| Patch generation | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Inverse patches (undo) | ❌ | ✅ | ✅ | ✅ | ❌ |
+| JSON Patch (RFC 6902) | ❌ | ❌ | ✅ | ✅² | ✅ |
+| Apply patches separately | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **Safety & Dev Ergonomics** | | | | | |
+| Freeze returned state | ❌ | ✅ | ✅³ | ⚠️⁴ | ❌ |
+| Frozen input detection | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Draft revocation after use | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Circular reference detection | ❌ | ❌ | ⚠️⁵ | ✅ | ❌ |
+| **Data Types** | | | | | |
+| Plain objects & arrays | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Map & Set support | ✅ | ✅⁶ | ✅ | ✅ | ✅ |
+| Class instances | ❌ | ❌ | ✅⁷ | ❌ | ❌ |
+| Date objects | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Advanced** | | | | | |
+| Curried producer | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Current snapshot in recipe | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Custom shallow copy / plugins | ❌ | ❌ | ✅ | ❌ | ❌ |
+| TypeScript generics | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Zero runtime dependencies | ✅ | ❌ | ✅ | ✅ | ✅ |
+
+<sup>¹ Immer discourages async inside `produce`; requires `createDraft`/`finishDraft` workaround.</sup>
+<sup>² Structura supports standard patches via `enableStandardPatches(true)`.</sup>
+<sup>³ Mutative auto-freeze is disabled by default for performance; opt-in via `enableAutoFreeze`.</sup>
+<sup>⁴ Structura freezes at compile-time via TypeScript only, not at runtime.</sup>
+<sup>⁵ Mutative detects circular references only when `enableAutoFreeze` is enabled in development mode.</sup>
+<sup>⁶ Immer requires calling `enableMapSet()` to enable Map/Set support.</sup>
+<sup>⁷ Mutative supports class instances via custom `mark` function.</sup>
 
 ## ⚖️ License
 
