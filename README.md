@@ -69,6 +69,22 @@ const updatedUsers = immutate(users, (draft) => {
 });
 ```
 
+### Resetting State (Return Pattern)
+
+You can replace the entire state by returning a value from the recipe.
+
+```javascript
+const initialState = { count: 0 };
+const state = { count: 100 };
+
+const resetState = immutate(state, (draft) => {
+  if (shouldReset) {
+    return initialState;
+  }
+  draft.count++;
+});
+```
+
 ### Async Recipe
 
 ```javascript
@@ -111,11 +127,11 @@ Mutating a single leaf 9 levels deep: `draft.a.b.c.d.e.f.g.h.i += 1`
 
 | Library | Avg Time (ms) | Perf Score |
 |---|---:|---:|
-| **@opentf/immutate** 🥇 | **0.00469** | **2.8x** |
-| craft | 0.00701 | 1.9x |
-| structura | 0.00753 | 1.8x |
-| immer | 0.00906 | 1.5x |
-| mutative | 0.01322 | 1.0x |
+| **@opentf/immutate** 🥇 | **0.00606** | **1.9x** |
+| craft | 0.00660 | 1.8x |
+| structura | 0.00726 | 1.6x |
+| immer | 0.00919 | 1.3x |
+| mutative | 0.01164 | 1.0x |
 
 ### Array Push (100 items)
 
@@ -123,11 +139,11 @@ Pushing 100 elements to an array: `draft.list.push(i)`
 
 | Library | Avg Time (ms) | Perf Score |
 |---|---:|---:|
-| **@opentf/immutate** 🥇 | **0.05843** | **16.3x** |
-| mutative | 0.12981 | 7.3x |
-| immer | 0.50700 | 1.9x |
-| craft | 0.55126 | 1.7x |
-| structura | 0.95276 | 1.0x |
+| **@opentf/immutate** 🥇 | **0.05592** | **16.9x** |
+| mutative | 0.12875 | 7.3x |
+| immer | 0.49668 | 1.9x |
+| craft | 0.54753 | 1.7x |
+| structura | 0.94442 | 1.0x |
 
 ### Wide Object (200 keys)
 
@@ -135,11 +151,11 @@ Mutating 200 properties on a flat object: `draft["key" + i] = i * 2`
 
 | Library | Avg Time (ms) | Perf Score |
 |---|---:|---:|
-| **@opentf/immutate** 🥇 | **0.04536** | **4.8x** |
-| structura | 0.11106 | 2.0x |
-| mutative | 0.16845 | 1.3x |
-| immer | 0.19428 | 1.1x |
-| craft | 0.21770 | 1.0x |
+| **@opentf/immutate** 🥇 | **0.04569** | **4.8x** |
+| structura | 0.11275 | 2.0x |
+| mutative | 0.17016 | 1.3x |
+| immer | 0.19419 | 1.1x |
+| craft | 0.22150 | 1.0x |
 
 Run benchmarks locally:
 
@@ -156,7 +172,7 @@ bun run benchmark
 | Structural sharing | ✅ | ✅ | ✅ | ✅ | ✅ |
 | No-change referential equality | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Async recipe support | ✅ | ⚠️¹ | ❌ | ✅ | ❌ |
-| Return value from recipe | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Return value from recipe | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Patches** | | | | | |
 | Patch generation | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Inverse patches (undo) | ❌ | ✅ | ✅ | ✅ | ❌ |

@@ -327,22 +327,24 @@ export type Immutable<T> = T extends Map<infer K, infer V>
 
 export function immutate<T>(
   baseState: T,
-  recipe: (draft: Draft<T>) => void
+  recipe: (draft: Draft<T>) => void | T | Immutable<T>
 ): Immutable<T> {
   const copies = new WeakMap<any, any>();
   const root: DraftNode = {};
   const draft = createDraft(baseState, root, copies);
-  recipe(draft);
+  const result = recipe(draft);
+  if (result !== undefined) return result as any;
   return finalize(root, baseState, copies);
 }
 
 export async function immutateAsync<T>(
   baseState: T,
-  recipe: (draft: Draft<T>) => Promise<void>
+  recipe: (draft: Draft<T>) => Promise<void | T | Immutable<T>>
 ): Promise<Immutable<T>> {
   const copies = new WeakMap<any, any>();
   const root: DraftNode = {};
   const draft = createDraft(baseState, root, copies);
-  await recipe(draft);
+  const result = await recipe(draft);
+  if (result !== undefined) return result as any;
   return finalize(root, baseState, copies);
 }

@@ -591,3 +591,48 @@ describe("immutateAsync", () => {
     expect(updated.b).toBe(original.b);
   });
 });
+
+describe("immutate - return from recipe", () => {
+  it("should replace state when a value is returned", () => {
+    const original = { a: 1 };
+    const updated = immutate(original, (_draft) => {
+      return { a: 100 };
+    });
+    expect(updated).toEqual({ a: 100 });
+    expect(original).toEqual({ a: 1 });
+  });
+
+  it("should replace state with a primitive value", () => {
+    const original = { a: 1 };
+    const updated = immutate(original, (_draft) => {
+      return 42 as any;
+    });
+    expect(updated).toBe(42 as any);
+  });
+
+  it("should replace state with null", () => {
+    const original = { a: 1 };
+    const updated = immutate(original, (_draft) => {
+      return null as any;
+    });
+    expect(updated).toBeNull();
+  });
+
+  it("should prioritize return value over draft mutations", () => {
+    const original = { a: 1 };
+    const updated = immutate(original, (draft) => {
+      draft.a = 2;
+      return { a: 3 };
+    });
+    expect(updated).toEqual({ a: 3 });
+  });
+
+  it("should handle async return replacement", async () => {
+    const original = { a: 1 };
+    const updated = await immutateAsync(original, async (_draft) => {
+      await Promise.resolve();
+      return { a: 100 };
+    });
+    expect(updated).toEqual({ a: 100 });
+  });
+});
