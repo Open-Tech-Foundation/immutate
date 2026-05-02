@@ -96,7 +96,9 @@ const nextState = await immutateAsync(state, async (draft) => {
 
 ### TypeScript Support
 
-Immutate provides full type safety out of the box. It uses `Draft<T>` to make the draft mutable inside the recipe, and `Immutable<T>` to make the returned state deep-readonly.
+Immutate provides full type safety out of the box. It uses `Draft<T>` to make the draft mutable inside the recipe, and `Immutable<T>` to enforce **compile-time immutability** on the returned state.
+
+This approach provides protection without the performance penalty of runtime `Object.freeze`.
 
 ```typescript
 import { immutate, type Immutable } from '@opentf/immutate';
@@ -113,6 +115,40 @@ const nextState = immutate(state, (draft) => {
 
 // nextState is Immutable<State>
 // nextState.user.name = 'Bob'; // ❌ TS Error: Cannot assign to 'name' because it is a read-only property.
+```
+
+## 🛡️ Safety & Best Practices
+
+To maintain peak performance, Immutate prioritizes speed over runtime checks. Follow these guidelines to ensure state integrity:
+
+### 1. Never Leak the Draft
+The `draft` object is only valid **inside** the recipe function. Never assign it to a variable outside the recipe.
+
+```typescript
+let leaked;
+immutate(state, (draft) => {
+  leaked = draft; // ❌ BAD: Never do this
+});
+// leaked is still a "live" Proxy, but using it here can lead to memory leaks and bugs.
+```
+
+### 2. Only Mutate the Draft
+Do not attempt to mutate the `baseState` directly while inside a recipe. Always perform your changes on the `draft`.
+
+### 3. Return vs. Mutation
+You can either mutate the draft **OR** return a new value. If you return a value (other than `undefined`), it will completely replace the state, and any mutations made to the draft will be ignored.
+
+### 4. Async Caution
+When using `immutateAsync`, ensure that you don't have multiple overlapping async recipes modifying the same state from different places, as this can lead to classic race conditions (this is a general async state rule, not specific to Immutate).
+
+### 5. Date Objects
+Immutate does not proxy `Date` objects due to internal slot limitations in JavaScript. Treat Dates as **immutable primitives**: instead of calling `.setFullYear()`, replace the property with a new Date instance.
+
+```typescript
+immutate(state, (draft) => {
+  // ❌ draft.date.setFullYear(2025); (Will throw TypeError)
+  draft.date = new Date("2025-01-01"); // ✅ Correct
+});
 ```
 
 ## ⚡ Benchmarks
@@ -179,7 +215,7 @@ bun run benchmark
 | JSON Patch (RFC 6902) | ❌ | ❌ | ✅ | ✅² | ✅ |
 | Apply patches separately | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **Safety & Dev Ergonomics** | | | | | |
-| Freeze returned state | ❌ | ✅ | ✅³ | ⚠️⁴ | ❌ |
+| Freeze returned state | ✅⁸ | ✅ | ✅³ | ⚠️⁴ | ❌ |
 | Frozen input detection | ❌ | ✅ | ✅ | ❌ | ❌ |
 | Draft revocation after use | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Circular reference detection | ❌ | ❌ | ⚠️⁵ | ✅ | ❌ |
@@ -202,6 +238,7 @@ bun run benchmark
 <sup>⁵ Mutative detects circular references only when `enableAutoFreeze` is enabled in development mode.</sup>
 <sup>⁶ Immer requires calling `enableMapSet()` to enable Map/Set support.</sup>
 <sup>⁷ Mutative supports class instances via custom `mark` function.</sup>
+<sup>⁸ Immutate uses deep-readonly TypeScript types to enforce immutability at compile-time with zero runtime overhead.</sup>
 
 ## ⚖️ License
 
