@@ -14,6 +14,7 @@
 - **Zero Dependencies**: No runtime dependencies. Pure structural-sharing engine.
 - **Simple API**: Write mutable-like syntax, get immutable results.
 - **Structural Sharing**: Only copies the changed spine — unchanged branches are reused by reference.
+- **Map & Set Support**: Full draft support for `Map` and `Set` — deep modifications, iteration, and structural sharing.
 - **TypeScript Support**: Full type safety for your state and recipes.
 - **Async Support**: `immutateAsync` for async recipes.
 
@@ -77,9 +78,9 @@ const nextState = await immutateAsync(state, async (draft) => {
 
 ## ⚡ Benchmarks
 
-Compared against popular immutability libraries. Lower avg time is better.
+Compared against popular immutability libraries. All libraries pass correctness verification before benchmarking. Lower avg time is better.
 
-> **Environment**: Bun v1.3.12 — 5,000 iterations per test.
+> **Environment**: Bun v1.3.12 — 5,000 iterations per test (with warmup).
 
 ### Deep Nested Object
 
@@ -87,11 +88,11 @@ Mutating a single leaf 9 levels deep: `draft.a.b.c.d.e.f.g.h.i += 1`
 
 | Library | Avg Time (ms) | Perf Score |
 |---|---:|---:|
-| **@opentf/immutate** 🥇 | **0.00516** | **2.3x** |
-| craft | 0.00786 | 1.5x |
-| structura | 0.00881 | 1.4x |
-| immer | 0.01104 | 1.1x |
-| mutative | 0.01192 | 1.0x |
+| **@opentf/immutate** 🥇 | **0.00469** | **2.8x** |
+| craft | 0.00701 | 1.9x |
+| structura | 0.00753 | 1.8x |
+| immer | 0.00906 | 1.5x |
+| mutative | 0.01322 | 1.0x |
 
 ### Array Push (100 items)
 
@@ -99,11 +100,11 @@ Pushing 100 elements to an array: `draft.list.push(i)`
 
 | Library | Avg Time (ms) | Perf Score |
 |---|---:|---:|
-| **@opentf/immutate** 🥇 | **0.06300** | **15.8x** |
-| mutative | 0.14258 | 7.0x |
-| immer | 0.52985 | 1.9x |
-| craft | 0.57075 | 1.7x |
-| structura | 0.99640 | 1.0x |
+| **@opentf/immutate** 🥇 | **0.05843** | **16.3x** |
+| mutative | 0.12981 | 7.3x |
+| immer | 0.50700 | 1.9x |
+| craft | 0.55126 | 1.7x |
+| structura | 0.95276 | 1.0x |
 
 ### Wide Object (200 keys)
 
@@ -111,11 +112,11 @@ Mutating 200 properties on a flat object: `draft["key" + i] = i * 2`
 
 | Library | Avg Time (ms) | Perf Score |
 |---|---:|---:|
-| **@opentf/immutate** 🥇 | **0.04751** | **4.9x** |
-| structura | 0.11950 | 1.9x |
-| mutative | 0.17814 | 1.3x |
-| immer | 0.20472 | 1.1x |
-| craft | 0.23073 | 1.0x |
+| **@opentf/immutate** 🥇 | **0.04536** | **4.8x** |
+| structura | 0.11106 | 2.0x |
+| mutative | 0.16845 | 1.3x |
+| immer | 0.19428 | 1.1x |
+| craft | 0.21770 | 1.0x |
 
 Run benchmarks locally:
 

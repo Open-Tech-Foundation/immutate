@@ -1,1 +1,1 @@
-export { immutate } from "./immutate";
+export { immutate, immutateAsync } from "./immutate";
